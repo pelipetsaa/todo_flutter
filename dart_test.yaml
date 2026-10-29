@@ -1,0 +1,3 @@
+tags:
+  # Needs a running ToDoList server, see test/e2e/end_to_end_test.dart.
+  e2e:

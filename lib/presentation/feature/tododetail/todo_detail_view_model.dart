@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' show TimeOfDay;
 import '../../../domain/domain_result.dart';
 import '../../../domain/error/domain_error.dart';
 import '../../../domain/model/models.dart';
+import '../../../domain/time/time_zone.dart';
 import '../../../domain/usecase/todo_use_cases.dart';
 import '../../mvi/mvi_view_model.dart';
 import 'todo_detail_contract.dart';
@@ -14,16 +15,21 @@ class TodoDetailViewModel extends MviViewModel<TodoDetailState, TodoDetailIntent
     required SaveTodoUseCase saveTodo,
     required DeleteTodoUseCase deleteTodo,
     required DefaultDueDateUseCase defaultDueDate,
+    TimeZone timeZone = const DeviceTimeZone(),
   }) : _getTodo = getTodo,
        _saveTodo = saveTodo,
        _deleteTodo = deleteTodo,
-       super(_initialState(todoId, defaultDueDate())) {
+       _timeZone = timeZone,
+       super(_initialState(todoId, timeZone.wallClock(defaultDueDate()))) {
     if (todoId != null) _load(todoId);
   }
 
   final GetTodoUseCase _getTodo;
   final SaveTodoUseCase _saveTodo;
   final DeleteTodoUseCase _deleteTodo;
+
+  /// Date and time fields are wall-clock values in this zone; the server gets UTC instants.
+  final TimeZone _timeZone;
 
   @override
   void onIntent(TodoDetailIntent intent) {
@@ -59,7 +65,7 @@ class TodoDetailViewModel extends MviViewModel<TodoDetailState, TodoDetailIntent
   Future<void> _load(String id) async {
     _reduce(const TodoDetailMutation.loadStarted());
     _reduce(switch (await _getTodo(id)) {
-      Success(:final value) => TodoDetailMutation.loaded(value),
+      Success(:final value) => TodoDetailMutation.loaded(value, _timeZone.wallClock(value.dueAt)),
       Failure(:final error) => TodoDetailMutation.loadFailed(error),
     });
   }
@@ -71,7 +77,7 @@ class TodoDetailViewModel extends MviViewModel<TodoDetailState, TodoDetailIntent
     final draft = TodoDraft(
       title: state.title,
       description: state.description,
-      dueAt: state.dueAt,
+      dueAt: _timeZone.instantOf(state.date.year, state.date.month, state.date.day, state.time.hour, state.time.minute),
       status: state.status,
     );
     switch (await _saveTodo(state.todoId, draft)) {
@@ -98,8 +104,7 @@ class TodoDetailViewModel extends MviViewModel<TodoDetailState, TodoDetailIntent
 
   void _reduce(TodoDetailMutation mutation) => updateState((state) => TodoDetailReducer.reduce(state, mutation));
 
-  static TodoDetailState _initialState(String? todoId, DateTime defaultDueAt) {
-    final dueAt = defaultDueAt.toLocal();
+  static TodoDetailState _initialState(String? todoId, DateTime dueAt) {
     return TodoDetailState(
       todoId: todoId,
       date: DateTime(dueAt.year, dueAt.month, dueAt.day),

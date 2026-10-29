@@ -28,7 +28,7 @@ class TodoDetailState extends Equatable {
   final String title;
   final String description;
 
-  /// Local calendar date, at midnight.
+  /// Calendar date in the user's time zone; only year, month and day are used.
   final DateTime date;
   final TimeOfDay time;
   final TodoStatus status;
@@ -42,9 +42,6 @@ class TodoDetailState extends Equatable {
   bool get isNew => todoId == null;
   bool get isBusy => isLoading || isSaving || isDeleting;
   bool get canEdit => !isBusy && loadError == null;
-
-  /// The due moment in the device time zone.
-  DateTime get dueAt => DateTime(date.year, date.month, date.day, time.hour, time.minute);
 
   TodoDetailState copyWith({
     String? title,
@@ -201,7 +198,9 @@ sealed class TodoDetailMutation {
   const TodoDetailMutation();
 
   const factory TodoDetailMutation.loadStarted() = _LoadStarted;
-  const factory TodoDetailMutation.loaded(Todo todo) = _Loaded;
+
+  /// [dueAt] is the wall-clock due time in the user's time zone.
+  const factory TodoDetailMutation.loaded(Todo todo, DateTime dueAt) = _Loaded;
   const factory TodoDetailMutation.loadFailed(DomainError error) = _LoadFailed;
   const factory TodoDetailMutation.titleChanged(String value) = _TitleChanged;
   const factory TodoDetailMutation.descriptionChanged(String value) = _DescriptionChanged;
@@ -219,9 +218,10 @@ final class _LoadStarted extends TodoDetailMutation {
 }
 
 final class _Loaded extends TodoDetailMutation {
-  const _Loaded(this.todo);
+  const _Loaded(this.todo, this.dueAt);
 
   final Todo todo;
+  final DateTime dueAt;
 }
 
 final class _LoadFailed extends TodoDetailMutation {

@@ -7,6 +7,7 @@ import 'package:todo_flutter/domain/usecase/auth_use_cases.dart';
 import 'package:todo_flutter/domain/usecase/todo_use_cases.dart';
 
 import '../support/fakes.dart';
+import '../support/time_zones.dart';
 
 void main() {
   late FakeAuthRepository auth;
@@ -72,8 +73,11 @@ void main() {
     });
 
     test('the default due date is the next full hour', () {
-      expect(DefaultDueDateUseCase(() => DateTime(2026, 10, 29, 13, 45))(), DateTime(2026, 10, 29, 14));
-      expect(DefaultDueDateUseCase(() => DateTime(2026, 12, 31, 23, 1))(), DateTime(2027));
+      DateTime dueFor(DateTime now) => DefaultDueDateUseCase(() => now, berlin)();
+      expect(dueFor(berlin.instantOf(2026, 10, 29, 13, 45)), berlin.instantOf(2026, 10, 29, 14));
+      expect(dueFor(berlin.instantOf(2026, 12, 31, 23, 1)), berlin.instantOf(2027));
+      // The result is an instant: 14:00 in Berlin (CET) is 13:00 UTC.
+      expect(dueFor(berlin.instantOf(2026, 10, 29, 13, 45)), DateTime.utc(2026, 10, 29, 13));
     });
   });
 }

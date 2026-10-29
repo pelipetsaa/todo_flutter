@@ -42,6 +42,61 @@ jobs:
           name: coverage
           path: coverage/lcov.info
 
+  e2e:
+    name: Client against a running server
+    runs-on: ubuntu-latest
+    services:
+      # Same database as ToDoList's docker-compose.yml, so the server starts with its development defaults.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: todolist
+          POSTGRES_USER: todolist
+          POSTGRES_PASSWORD: todolist
+        ports: ["5434:5432"]
+        options: >-
+          --health-cmd "pg_isready -U todolist -d todolist"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      # The backend lives in its own repository; the latest main is what the deployed server runs.
+      - uses: actions/checkout@v4
+        with:
+          repository: pelipetsaa/ToDoList
+          path: backend
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          build-root-directory: backend
+      - name: Start the server
+        working-directory: backend
+        run: |
+          ./gradlew :server:buildFatJar
+          nohup java -jar server/build/libs/server-all.jar > server.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8080/health/ready && exit 0
+            sleep 2
+          done
+          cat server.log
+          exit 1
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Run the client's HTTP stack against it
+        env:
+          E2E_BASE_URL: http://localhost:8080
+        run: flutter test test/e2e
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-server-log
+          path: backend/server.log
+
   android:
     name: Android build
     runs-on: ubuntu-latest

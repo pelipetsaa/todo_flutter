@@ -106,6 +106,38 @@ void main() {
       expect(viewModel.state.error, const LoginGoogleError());
     });
 
+    test('submit shows progress and sends the trimmed email', () async {
+      viewModel
+        ..onIntent(const LoginEmailChanged('  user@mail.com '))
+        ..onIntent(const LoginPasswordChanged('secret'))
+        ..onIntent(const LoginSubmitClicked());
+      expect(viewModel.state.isSubmitting, isTrue);
+      expect(viewModel.state.isBusy, isTrue);
+      await settle();
+      expect(auth.calls, ['login user@mail.com secret']);
+    });
+
+    test('a Google token rejected by the backend shows the Google error', () async {
+      auth.result = const Failure(UnauthorizedError());
+      viewModel
+        ..onIntent(const LoginGoogleClicked())
+        ..onIntent(const LoginGoogleTokenReceived('expired-token'));
+      await settle();
+      expect(auth.calls, ['google expired-token']);
+      expect(viewModel.state.error, const LoginGoogleError());
+      expect(viewModel.state.isGoogleInProgress, isFalse);
+    });
+
+    test('a network failure is shown as is', () async {
+      auth.result = const Failure(NetworkError());
+      viewModel
+        ..onIntent(const LoginEmailChanged('user@mail.com'))
+        ..onIntent(const LoginPasswordChanged('secret'))
+        ..onIntent(const LoginSubmitClicked());
+      await settle();
+      expect(viewModel.state.error, const LoginOtherError(NetworkError()));
+    });
+
     test('register navigation is ignored while busy', () async {
       viewModel
         ..onIntent(const LoginGoogleClicked())
@@ -140,6 +172,18 @@ void main() {
       expect(viewModel.state.passwordError, ValidationError.passwordTooShort);
       expect(viewModel.state.confirmPasswordError, ValidationError.passwordMismatch);
       expect(auth.calls, isEmpty);
+    });
+
+    test('valid input registers', () async {
+      fill(' new@mail.com', 'password1', 'password1');
+      viewModel.onIntent(const RegisterSubmitClicked());
+      expect(viewModel.state.isSubmitting, isTrue);
+      await settle();
+      expect(auth.calls, ['register new@mail.com password1']);
+      expect(
+        viewModel.state,
+        const RegisterState(email: ' new@mail.com', password: 'password1', confirmPassword: 'password1'),
+      );
     });
 
     test('a taken email is reported', () async {

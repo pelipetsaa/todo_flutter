@@ -135,6 +135,25 @@ void main() {
       expect(viewModel.state.todos, [todo('week')]);
     });
 
+    test('selecting a period requests its range', () async {
+      viewModel.onIntent(const TodoListScreenShown());
+      await settle();
+      viewModel.onIntent(const TodoListPeriodSelected(Period.month));
+      await settle();
+      expect(repository.ranges.last, const PeriodRangeCalculator().rangeFor(Period.month, now));
+      expect(viewModel.state.period, Period.month);
+    });
+
+    test('reselecting the same period does nothing', () async {
+      viewModel.onIntent(const TodoListScreenShown());
+      await settle();
+      final shown = viewModel.state;
+      viewModel.onIntent(const TodoListPeriodSelected(Period.today));
+      await settle();
+      expect(repository.ranges, hasLength(1));
+      expect(viewModel.state, shown);
+    });
+
     test('rows and the FAB open the detail screen', () async {
       viewModel
         ..onIntent(const TodoListTodoClicked('7'))

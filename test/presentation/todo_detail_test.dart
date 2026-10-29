@@ -8,11 +8,12 @@ import 'package:todo_flutter/presentation/feature/tododetail/todo_detail_contrac
 import 'package:todo_flutter/presentation/feature/tododetail/todo_detail_view_model.dart';
 
 import '../support/fakes.dart';
+import '../support/time_zones.dart';
 
 void main() {
   late FakeTodoRepository repository;
   late List<TodoDetailEffect> effects;
-  final now = DateTime(2026, 10, 29, 13, 20);
+  final now = berlin.instantOf(2026, 10, 29, 13, 20);
 
   TodoDetailViewModel create(String? id) {
     final viewModel = TodoDetailViewModel(
@@ -20,7 +21,8 @@ void main() {
       getTodo: GetTodoUseCase(repository),
       saveTodo: SaveTodoUseCase(repository),
       deleteTodo: DeleteTodoUseCase(repository),
-      defaultDueDate: DefaultDueDateUseCase(() => now),
+      defaultDueDate: DefaultDueDateUseCase(() => now, berlin),
+      timeZone: berlin,
     );
     addTearDown(viewModel.dispose);
     viewModel.effects.listen(effects.add);
@@ -57,11 +59,30 @@ void main() {
         TodoDraft(
           title: 'Buy milk',
           description: 'two bottles',
-          dueAt: DateTime(2026, 11, 2, 9, 30),
+          dueAt: berlin.instantOf(2026, 11, 2, 9, 30),
           status: TodoStatus.inProgress,
         ),
       );
       expect(effects, [const TodoDetailClose()]);
+    });
+
+    test('date and time are combined in the user time zone', () async {
+      // 9:30 on 2 Nov in Berlin (CET, UTC+1) is 8:30 UTC; before 25 Oct (CEST, UTC+2) it would be 7:30.
+      create(null)
+        ..onIntent(const TodoDetailTitleChanged('Title'))
+        ..onIntent(TodoDetailDateSelected(DateTime(2026, 11, 2)))
+        ..onIntent(const TodoDetailTimeSelected(TimeOfDay(hour: 9, minute: 30)))
+        ..onIntent(const TodoDetailSaveClicked());
+      await settle();
+      expect(repository.created.single.dueAt, DateTime.utc(2026, 11, 2, 8, 30));
+
+      create(null)
+        ..onIntent(const TodoDetailTitleChanged('Title'))
+        ..onIntent(TodoDetailDateSelected(DateTime(2026, 10, 20)))
+        ..onIntent(const TodoDetailTimeSelected(TimeOfDay(hour: 9, minute: 30)))
+        ..onIntent(const TodoDetailSaveClicked());
+      await settle();
+      expect(repository.created.last.dueAt, DateTime.utc(2026, 10, 20, 7, 30));
     });
 
     test('validation errors are shown inline, not in a snackbar', () async {
@@ -90,7 +111,12 @@ void main() {
   });
 
   group('edit mode', () {
-    final existing = todo('5', title: 'Call mom', dueAt: DateTime(2026, 10, 30, 18, 15), status: TodoStatus.done);
+    final existing = todo(
+      '5',
+      title: 'Call mom',
+      dueAt: berlin.instantOf(2026, 10, 30, 18, 15),
+      status: TodoStatus.done,
+    );
 
     test('loads the todo into the form', () async {
       repository.todoResult = Success(existing);

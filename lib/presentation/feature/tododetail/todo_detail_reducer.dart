@@ -5,7 +5,7 @@ abstract final class TodoDetailReducer {
 
   static TodoDetailState reduce(TodoDetailState state, TodoDetailMutation mutation) => switch (mutation) {
     _LoadStarted() => state.copyWith(isLoading: true, loadError: null),
-    _Loaded(:final todo) => _loaded(state, todo),
+    _Loaded(:final todo, :final dueAt) => _loaded(state, todo, dueAt),
     _LoadFailed(:final error) => state.copyWith(isLoading: false, loadError: error),
     _TitleChanged(:final value) => state.copyWith(title: value, titleError: null),
     _DescriptionChanged(:final value) => state.copyWith(description: value, descriptionError: null),
@@ -18,8 +18,7 @@ abstract final class TodoDetailReducer {
     _DeleteFailed() => state.copyWith(isDeleting: false),
   };
 
-  static TodoDetailState _loaded(TodoDetailState state, Todo todo) {
-    final dueAt = todo.dueAt.toLocal();
+  static TodoDetailState _loaded(TodoDetailState state, Todo todo, DateTime dueAt) {
     return state.copyWith(
       title: todo.title,
       description: todo.description,

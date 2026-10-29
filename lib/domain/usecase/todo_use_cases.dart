@@ -3,6 +3,7 @@ import '../error/domain_error.dart';
 import '../model/models.dart';
 import '../period/period_range_calculator.dart';
 import '../repository/repositories.dart';
+import '../time/time_zone.dart';
 import '../validation/validators.dart';
 
 /// Returns the current moment; injected so that tests can fix the time.
@@ -49,14 +50,15 @@ class DeleteTodoUseCase {
   Future<DomainResult<void>> call(String id) => _todoRepository.delete(id);
 }
 
-/// Default due date for a new todo: the next full hour in the device time zone.
+/// Default due date for a new todo: the next full hour in the user's time zone, as a UTC instant.
 class DefaultDueDateUseCase {
-  const DefaultDueDateUseCase(this._clock);
+  const DefaultDueDateUseCase(this._clock, [this._timeZone = const DeviceTimeZone()]);
 
   final Clock _clock;
+  final TimeZone _timeZone;
 
   DateTime call() {
-    final now = _clock().toLocal();
-    return DateTime(now.year, now.month, now.day, now.hour).add(const Duration(hours: 1));
+    final now = _timeZone.wallClock(_clock());
+    return _timeZone.instantOf(now.year, now.month, now.day, now.hour).add(const Duration(hours: 1));
   }
 }

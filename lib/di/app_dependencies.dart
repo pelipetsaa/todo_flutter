@@ -7,6 +7,7 @@ import '../data/repository/repositories.dart';
 import '../data/session/session_manager.dart';
 import '../domain/period/period_range_calculator.dart';
 import '../domain/repository/repositories.dart';
+import '../domain/time/time_zone.dart';
 import '../domain/usecase/auth_use_cases.dart';
 import '../domain/usecase/todo_use_cases.dart';
 import '../presentation/auth/google_sign_in_provider.dart';
@@ -24,9 +25,11 @@ class AppDependencies {
     required TodoRepository todoRepository,
     required this.googleSignIn,
     Clock clock = DateTime.now,
+    TimeZone timeZone = const DeviceTimeZone(),
   }) : _authRepository = authRepository,
        _todoRepository = todoRepository,
        _clock = clock,
+       _timeZone = timeZone,
        observeSession = ObserveSessionUseCase(sessionRepository);
 
   static Future<AppDependencies> create(AppConfig config) async {
@@ -46,6 +49,7 @@ class AppDependencies {
   final AuthRepository _authRepository;
   final TodoRepository _todoRepository;
   final Clock _clock;
+  final TimeZone _timeZone;
   final GoogleSignInProvider googleSignIn;
   final ObserveSessionUseCase observeSession;
 
@@ -55,7 +59,7 @@ class AppDependencies {
   RegisterViewModel registerViewModel() => RegisterViewModel(RegisterUseCase(_authRepository));
 
   TodoListViewModel todoListViewModel() => TodoListViewModel(
-    GetTodosForPeriodUseCase(_todoRepository, const PeriodRangeCalculator(), _clock),
+    GetTodosForPeriodUseCase(_todoRepository, PeriodRangeCalculator(_timeZone), _clock),
     LogoutUseCase(_authRepository),
   );
 
@@ -64,6 +68,7 @@ class AppDependencies {
     getTodo: GetTodoUseCase(_todoRepository),
     saveTodo: SaveTodoUseCase(_todoRepository),
     deleteTodo: DeleteTodoUseCase(_todoRepository),
-    defaultDueDate: DefaultDueDateUseCase(_clock),
+    defaultDueDate: DefaultDueDateUseCase(_clock, _timeZone),
+    timeZone: _timeZone,
   );
 }

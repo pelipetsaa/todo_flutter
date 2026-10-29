@@ -83,19 +83,29 @@ The OAuth clients of ToDoList are registered for its own package and bundle ID, 
 ```bash
 flutter analyze
 flutter test
+
+# End-to-end: the client against a running ToDoList server (see "Running")
+E2E_BASE_URL=http://localhost:8080 flutter test test/e2e
 ```
 
 | Folder | What is covered |
 |--------|-----------------|
-| `test/domain` | Period boundaries (week start, month and year changes), validation, use cases |
+| `test/core` | JSON contract with the server: ISO instants (with microseconds), statuses, auth bodies, error responses |
+| `test/domain` | Period boundaries (week start, month and year changes, DST days, other zones), validation, use cases |
 | `test/data` | Requests and mapping through a fake HTTP adapter, HTTP → domain error mapping, transparent token refresh (shared by concurrent requests), session end on a rejected refresh, retries of reads only |
 | `test/presentation` | Reducers and view models of every screen, widget tests of the sign-in and todo list screens, the auth gate |
+| `test/e2e` | Sign-up, todo CRUD, sign-out and server validation through the real HTTP stack; skipped without `E2E_BASE_URL` |
+
+Date and time logic takes a `TimeZone` (`lib/domain/time`): the app uses the device's, tests a fixed IANA zone
+(`test/support/time_zones.dart`), so results do not depend on the machine running them.
 
 ## CI/CD
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push to `main` and every pull request:
 
 - **quality** (Linux): `dart format` check, `flutter analyze`, tests with a coverage summary.
+- **e2e** (Linux): checks out [ToDoList](https://github.com/pelipetsaa/ToDoList), starts its server with PostgreSQL and
+  runs `test/e2e` against it.
 - **android** (Linux): debug APK (uploaded as an artifact) and a release build, so R8 problems show up before a release.
 - **ios** (macOS): release build without code signing.
 
