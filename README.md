@@ -47,12 +47,24 @@ Start the backend from ToDoList (PostgreSQL in Docker plus the Ktor server on po
 cd ../ToDoList && docker compose up -d && ./gradlew :server:run
 ```
 
-Then run the app; debug builds talk to the local server (`10.0.2.2:8080` from the Android emulator,
-`localhost:8080` from the iOS simulator):
+Then run the app. Builds pick their backend by build type:
+
+| Build | Backend | Android package / iOS bundle ID | Name |
+|-------|---------|---------------------------------|------|
+| Debug (`flutter run`) | Local server: `10.0.2.2:8080` from the Android emulator, `localhost:8080` from the iOS simulator | `com.pelypets.todo.todo_flutter.debug` / `com.pelypets.todo.todoFlutter.debug` | ToDo Debug |
+| Release (GitHub releases) | `https://todolist-server-zyck.onrender.com` | `com.pelypets.todo.todo_flutter` / `com.pelypets.todo.todoFlutter` | ToDo |
+
+Debug and release builds have different IDs, so both can be installed on one device.
 
 ```bash
-flutter run
+flutter run                      # emulator or simulator
+tool/run_on_device.sh            # a connected phone, still against the local server
 ```
+
+`tool/run_on_device.sh` picks the first connected phone (or the device ID you pass). On Android it runs
+`adb reverse tcp:8080 tcp:8080`, so the phone reaches the server as `localhost:8080` over USB; on an iPhone it uses
+this computer's Wi-Fi address, so both must be on the same network (iOS asks for local network access once). Debug
+builds allow plain HTTP to any host; release builds use HTTPS only.
 
 ### Configuration (`--dart-define`)
 
@@ -73,12 +85,12 @@ signing certificate; until then the button shows an error and email sign-in keep
 `adb logcat -s flutter` shows `Google sign-in failed: clientConfigurationError: ...`.
 
 In Google Cloud Console → APIs & Services → Credentials (the ToDoList project) create an Android OAuth client per
-signing certificate, all for package `com.pelypets.todo.todo_flutter`:
+package and signing certificate:
 
 | Builds | SHA-1 |
 |--------|-------|
 | GitHub releases (the ToDoList upload key) | `3A:81:D0:10:F6:9C:B3:EE:19:83:E7:C6:2C:31:42:87:8E:9B:4D:78` |
-| Local debug builds | `keytool -list -v -keystore ~/.android/debug.keystore -storepass android` |
+| Local debug builds (package `com.pelypets.todo.todo_flutter.debug`) | `keytool -list -v -keystore ~/.android/debug.keystore -storepass android` |
 | Google Play | the app signing key SHA-1 from Play Console → App integrity |
 
 iOS needs its own client as well, since ToDoList's is registered for another bundle ID:

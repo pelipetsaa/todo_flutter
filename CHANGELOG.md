@@ -5,6 +5,12 @@ versions are the `v*` tags that trigger the release workflow.
 
 ## Unreleased
 
+### Added
+- Debug builds have their own package / bundle ID (`.debug`) and name "ToDo Debug", so they can be installed next to
+  the release app.
+- `tool/run_on_device.sh` runs a debug build on a connected phone against the local server (`adb reverse` on Android,
+  the computer's Wi-Fi address on iPhone); Android debug builds allow plain HTTP to any host for this.
+
 ## 1.0.1 — 2026-10-30
 
 ### Fixed

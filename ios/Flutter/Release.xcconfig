@@ -1,2 +1,4 @@
 #include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
+// Home screen name; debug builds (local server) are told apart from the release app.
+APP_DISPLAY_NAME=ToDo

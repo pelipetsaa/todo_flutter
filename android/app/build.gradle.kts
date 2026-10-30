@@ -20,7 +20,6 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.pelypets.todo.todo_flutter"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -28,6 +27,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["appLabel"] = "ToDo"
     }
 
     // The release workflow passes the upload key through these variables; without them (local builds)
@@ -45,6 +45,11 @@ android {
     }
 
     buildTypes {
+        // Debug builds talk to a local server: a separate package and name let them sit next to the release app.
+        debug {
+            applicationIdSuffix = ".debug"
+            manifestPlaceholders["appLabel"] = "ToDo Debug"
+        }
         release {
             signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
         }
