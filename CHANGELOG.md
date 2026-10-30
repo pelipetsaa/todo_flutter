@@ -5,6 +5,8 @@ versions are the `v*` tags that trigger the release workflow.
 
 ## Unreleased
 
+## 1.0.1 — 2026-10-30
+
 ### Fixed
 - Google sign-in was switched off in release builds: they now send ToDoList's web OAuth client as the ID token
   audience. It works once an Android OAuth client for this package and signing key exists (see README).
