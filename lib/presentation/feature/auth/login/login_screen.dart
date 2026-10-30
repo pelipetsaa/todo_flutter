@@ -43,6 +43,8 @@ class _LoginRouteState extends State<LoginRoute> {
         widget.onNavigateToRegister();
       case LoginLaunchGoogleSignIn():
         final result = await widget.googleSignIn.signIn();
+        // The UI shows a generic message; the reason goes to the device log (`adb logcat -s flutter`).
+        if (result case GoogleSignInFailure(:final message)) debugPrint('Google sign-in failed: $message');
         _viewModel.onIntent(switch (result) {
           GoogleSignInSuccess(:final idToken) => LoginGoogleTokenReceived(idToken),
           GoogleSignInCancelled() => const LoginGoogleCancelled(),

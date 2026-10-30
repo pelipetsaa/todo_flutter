@@ -5,6 +5,12 @@ versions are the `v*` tags that trigger the release workflow.
 
 ## Unreleased
 
+### Fixed
+- Google sign-in was switched off in release builds: they now send ToDoList's web OAuth client as the ID token
+  audience. It works once an Android OAuth client for this package and signing key exists (see README).
+- A failed Google sign-in logs its reason, can be retried after a failed initialization, and no longer leaves the
+  button spinning on unexpected platform errors.
+
 ## 1.0.0 — 2026-10-30
 
 First release: a Flutter client with the same features and REST contract as the ToDoList apps. Release builds talk

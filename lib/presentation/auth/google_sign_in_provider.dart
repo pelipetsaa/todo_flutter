@@ -46,15 +46,24 @@ class PluginGoogleSignInProvider implements GoogleSignInProvider {
   Future<GoogleSignInResult> signIn() async {
     final signIn = GoogleSignIn.instance;
     try {
-      await (_initialization ??= signIn.initialize(clientId: clientId, serverClientId: serverClientId));
+      try {
+        await (_initialization ??= signIn.initialize(clientId: clientId, serverClientId: serverClientId));
+      } catch (_) {
+        _initialization = null; // A failed initialization is retried on the next tap.
+        rethrow;
+      }
       if (!signIn.supportsAuthenticate()) return const GoogleSignInFailure('Not supported on this platform');
       final account = await signIn.authenticate();
       final idToken = account.authentication.idToken;
       return idToken == null ? const GoogleSignInFailure('No ID token') : GoogleSignInSuccess(idToken);
     } on GoogleSignInException catch (e) {
+      // clientConfigurationError usually means no OAuth client matches this package and signing certificate.
       return e.code == GoogleSignInExceptionCode.canceled
           ? const GoogleSignInCancelled()
-          : GoogleSignInFailure(e.description);
+          : GoogleSignInFailure('${e.code.name}: ${e.description}');
+    } on Exception catch (e) {
+      // Platform errors outside the plugin's own exceptions must not leave the button spinning.
+      return GoogleSignInFailure(e.toString());
     }
   }
 }

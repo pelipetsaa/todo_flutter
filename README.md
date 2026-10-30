@@ -59,7 +59,7 @@ flutter run
 | Define | Default | Purpose |
 |--------|---------|---------|
 | `API_BASE_URL` | local server in debug, `https://todolist-server-zyck.onrender.com` in release | Backend address; release builds refuse anything but `https://` |
-| `GOOGLE_SERVER_CLIENT_ID` | empty | Web OAuth client; the ID token audience on Android |
+| `GOOGLE_SERVER_CLIENT_ID` | ToDoList's web client | Web OAuth client; the ID token audience on Android |
 | `GOOGLE_IOS_CLIENT_ID` | empty | iOS OAuth client |
 
 Cleartext HTTP is allowed only for local hosts: a debug-only network security config on Android and
@@ -67,16 +67,26 @@ Cleartext HTTP is allowed only for local hosts: a debug-only network security co
 
 ### Enabling Google sign-in
 
-Without the client IDs the "Continue with Google" button shows an error; email sign-in keeps working.
-The OAuth clients of ToDoList are registered for its own package and bundle ID, so this app needs its own:
+Android builds send ToDoList's web OAuth client as the ID token audience (the server already accepts it). Google
+only issues the token when an **Android** OAuth client in the same Google Cloud project matches the app's package and
+signing certificate; until then the button shows an error and email sign-in keeps working. The reason is logged:
+`adb logcat -s flutter` shows `Google sign-in failed: clientConfigurationError: ...`.
 
-1. In Google Cloud Console (the project of the ToDoList server) create an **Android** client for package
-   `com.pelypets.todo.todo_flutter` with your debug SHA-1, and an **iOS** client for bundle ID
-   `com.pelypets.todo.todoFlutter`.
-2. Add the new iOS client ID to the server's `GOOGLE_CLIENT_IDS`.
-3. iOS: add the reversed iOS client ID as a URL scheme (`CFBundleURLTypes`) in `ios/Runner/Info.plist`.
-4. Run with
-   `--dart-define=GOOGLE_SERVER_CLIENT_ID=<web client id> --dart-define=GOOGLE_IOS_CLIENT_ID=<ios client id>`.
+In Google Cloud Console → APIs & Services → Credentials (the ToDoList project) create an Android OAuth client per
+signing certificate, all for package `com.pelypets.todo.todo_flutter`:
+
+| Builds | SHA-1 |
+|--------|-------|
+| GitHub releases (the ToDoList upload key) | `3A:81:D0:10:F6:9C:B3:EE:19:83:E7:C6:2C:31:42:87:8E:9B:4D:78` |
+| Local debug builds | `keytool -list -v -keystore ~/.android/debug.keystore -storepass android` |
+| Google Play | the app signing key SHA-1 from Play Console → App integrity |
+
+iOS needs its own client as well, since ToDoList's is registered for another bundle ID:
+
+1. Create an **iOS** client for bundle ID `com.pelypets.todo.todoFlutter` and add its ID to the server's
+   `GOOGLE_CLIENT_IDS`.
+2. Add the reversed client ID as a URL scheme (`CFBundleURLTypes`) in `ios/Runner/Info.plist`.
+3. Build with `--dart-define=GOOGLE_IOS_CLIENT_ID=<ios client id>`.
 
 ## Tests
 
