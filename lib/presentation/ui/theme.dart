@@ -11,6 +11,8 @@ const _lightColors = ColorScheme.light(
   tertiary: Color(0xFF00897B),
   tertiaryContainer: Color(0xFFB2DFDB),
   onTertiaryContainer: Color(0xFF00201C),
+  // Compose's default surfaceVariant; Flutter would fall back to the white surface here.
+  surfaceContainerHighest: Color(0xFFE7E0EC),
 );
 
 const _darkColors = ColorScheme.dark(
@@ -23,6 +25,7 @@ const _darkColors = ColorScheme.dark(
   tertiary: Color(0xFF80CBC4),
   tertiaryContainer: Color(0xFF00504A),
   onTertiaryContainer: Color(0xFFB2DFDB),
+  surfaceContainerHighest: Color(0xFF49454F),
 );
 
 abstract final class TodoTheme {

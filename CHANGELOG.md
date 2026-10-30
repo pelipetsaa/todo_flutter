@@ -11,6 +11,9 @@ versions are the `v*` tags that trigger the release workflow.
 - `tool/run_on_device.sh` runs a debug build on a connected phone against the local server (`adb reverse` on Android,
   the computer's Wi-Fi address on iPhone); Android debug builds allow plain HTTP to any host for this.
 
+### Fixed
+- The "To do" status badge had no background in the light theme; it is grey again, as in the ToDoList apps.
+
 ## 1.0.1 — 2026-10-30
 
 ### Fixed
