@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../core/dto/dtos.dart';
 import '../../domain/domain_result.dart';
 import '../../domain/model/models.dart';
@@ -27,11 +29,10 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<DomainResult<void>> logout() async {
     final refreshToken = _session.currentTokens?.refreshToken;
-    if (refreshToken != null) {
-      // Best effort: the local session is cleared even if the server cannot be reached.
-      await safeApiCall(() => _api.logout(refreshToken));
-    }
     await _session.end();
+    // Best effort and not awaited: a sleeping server may take a minute to answer, and the user is signed out locally
+    // either way.
+    if (refreshToken != null) unawaited(safeApiCall(() => _api.logout(refreshToken)));
     return const Success(null);
   }
 

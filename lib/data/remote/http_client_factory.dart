@@ -48,14 +48,16 @@ abstract final class HttpClientFactory {
     dio.interceptors.addAll([
       AuthInterceptor(dio, refreshClient, session),
       RetryInterceptor(dio, baseDelay: retryDelay),
-      if (config.enableLogging) LogInterceptor(responseBody: false),
+      // Headers stay out of the log: they carry the access token.
+      if (config.enableLogging) LogInterceptor(requestHeader: false, responseBody: false),
     ]);
     return dio;
   }
 }
 
 /// Sends the access token with every non-auth request; on 401 refreshes the token pair once
-/// (shared by concurrent requests) and repeats the request. A rejected refresh ends the session.
+/// (shared by concurrent requests) and repeats the request. A rejected refresh ends the session; a refresh
+/// that gets no answer keeps it, and the request fails with that network error.
 class AuthInterceptor extends Interceptor {
   AuthInterceptor(this._dio, this._refreshClient, this._session);
 
@@ -90,9 +92,15 @@ class AuthInterceptor extends Interceptor {
     }
     // Another request may have refreshed the pair while this one was in flight.
     final sentToken = options.headers['Authorization'];
-    final tokens = sentToken == 'Bearer ${current.accessToken}'
-        ? await (_refreshing ??= _refresh(current.refreshToken).whenComplete(() => _refreshing = null))
-        : current;
+    final StoredTokens? tokens;
+    try {
+      tokens = sentToken == 'Bearer ${current.accessToken}'
+          ? await (_refreshing ??= _refresh(current.refreshToken).whenComplete(() => _refreshing = null))
+          : current;
+    } on DioException catch (e) {
+      // Reported as this request's failure, so that it reads as "no connection" rather than "session expired".
+      return handler.next(DioException(requestOptions: options, type: e.type, error: e.error, message: e.message));
+    }
     if (tokens == null) return handler.next(err);
     try {
       options.extra[_retriedKey] = true;
@@ -102,6 +110,8 @@ class AuthInterceptor extends Interceptor {
     }
   }
 
+  /// The new pair, or null when the server rejected the refresh token and the session is over.
+  /// Throws the [DioException] when the server could not be reached.
   Future<StoredTokens?> _refresh(String refreshToken) async {
     try {
       final response = await _refreshClient.post<Map<String, dynamic>>(
@@ -112,14 +122,14 @@ class AuthInterceptor extends Interceptor {
       await _session.start(tokens);
       return tokens;
     } on DioException catch (e) {
-      // The server rejected the refresh token: the session is over. Without a response
-      // (no network) the session is kept and the request fails with the original 401.
-      if (e.response != null) await _session.end();
+      if (e.response == null) rethrow;
+      await _session.end();
       return null;
     }
   }
 
-  static bool _isAuthRequest(RequestOptions options) => options.uri.path.startsWith(ApiRoutes.authPrefix);
+  /// [RequestOptions.path] is the route relative to the base URL, which may itself contain a path.
+  static bool _isAuthRequest(RequestOptions options) => options.path.startsWith(ApiRoutes.authPrefix);
 }
 
 /// Repeats reads that failed with statuses a proxy returns while the server restarts or redeploys.

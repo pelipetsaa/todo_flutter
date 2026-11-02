@@ -171,6 +171,40 @@ void main() {
       expect(effects.last, const TodoDetailClose());
     });
 
+    test('saving a todo deleted elsewhere reports it and closes', () async {
+      repository
+        ..todoResult = Success(existing)
+        ..saveResult = const Failure(NotFoundError());
+      final viewModel = create('5');
+      await settle();
+      viewModel.onIntent(const TodoDetailSaveClicked());
+      await settle();
+      expect(effects, [const TodoDetailShowError(NotFoundError()), const TodoDetailClose()]);
+    });
+
+    test('deleting a todo deleted elsewhere just closes', () async {
+      repository
+        ..todoResult = Success(existing)
+        ..deleteResult = const Failure(NotFoundError());
+      final viewModel = create('5');
+      await settle();
+      viewModel.onIntent(const TodoDetailDeleteConfirmed());
+      await settle();
+      expect(effects, [const TodoDetailClose()]);
+    });
+
+    test('a failed delete keeps the screen and shows the error', () async {
+      repository
+        ..todoResult = Success(existing)
+        ..deleteResult = const Failure(NetworkError());
+      final viewModel = create('5');
+      await settle();
+      viewModel.onIntent(const TodoDetailDeleteConfirmed());
+      await settle();
+      expect(viewModel.state.isDeleting, isFalse);
+      expect(effects, [const TodoDetailShowError(NetworkError())]);
+    });
+
     test('pickers open with the current values', () async {
       repository.todoResult = Success(existing);
       final viewModel = create('5');

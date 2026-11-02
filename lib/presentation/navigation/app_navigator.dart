@@ -68,6 +68,7 @@ class _TodoAppState extends State<TodoApp> {
     builder: (context) => TodoListRoute(
       createViewModel: _deps.todoListViewModel,
       onOpenTodo: (id) => Navigator.of(context).push(_todoDetailRoute(id)),
+      timeZone: _deps.timeZone,
     ),
   );
 

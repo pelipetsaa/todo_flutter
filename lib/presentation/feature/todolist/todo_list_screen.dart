@@ -3,15 +3,22 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../domain/model/models.dart';
+import '../../../domain/time/time_zone.dart';
 import '../../ui/components/status_badge.dart';
 import '../../ui/strings.dart';
 import 'todo_list_contract.dart';
 import 'todo_list_view_model.dart';
 
 class TodoListRoute extends StatefulWidget {
-  const TodoListRoute({super.key, required this.createViewModel, required this.onOpenTodo});
+  const TodoListRoute({
+    super.key,
+    required this.createViewModel,
+    required this.onOpenTodo,
+    this.timeZone = const DeviceTimeZone(),
+  });
 
   final TodoListViewModel Function() createViewModel;
+  final TimeZone timeZone;
 
   /// Completes when the detail screen is closed; the list then reloads.
   final Future<void> Function(String? id) onOpenTodo;
@@ -67,17 +74,30 @@ class _TodoListRouteState extends State<TodoListRoute> {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: _viewModel,
-    builder: (context, _) =>
-        TodoListScreen(state: _viewModel.state, onIntent: _viewModel.onIntent, onRefresh: _refresh),
+    builder: (context, _) => TodoListScreen(
+      state: _viewModel.state,
+      onIntent: _viewModel.onIntent,
+      onRefresh: _refresh,
+      timeZone: widget.timeZone,
+    ),
   );
 }
 
 class TodoListScreen extends StatelessWidget {
-  const TodoListScreen({super.key, required this.state, required this.onIntent, required this.onRefresh});
+  const TodoListScreen({
+    super.key,
+    required this.state,
+    required this.onIntent,
+    required this.onRefresh,
+    this.timeZone = const DeviceTimeZone(),
+  });
 
   final TodoListState state;
   final ValueChanged<TodoListIntent> onIntent;
   final RefreshCallback onRefresh;
+
+  /// Due times are shown as wall-clock times in this zone.
+  final TimeZone timeZone;
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +136,11 @@ class TodoListScreen extends StatelessWidget {
                         title: strings.emptyPeriod(state.period),
                         subtitle: strings.emptyHint,
                       ),
-                      _ => _TodoList(todos: state.todos, onTap: (id) => onIntent(TodoListTodoClicked(id))),
+                      _ => _TodoList(
+                        todos: state.todos,
+                        timeZone: timeZone,
+                        onTap: (id) => onIntent(TodoListTodoClicked(id)),
+                      ),
                     },
                   ),
           ),
@@ -163,9 +187,10 @@ class _PeriodTabsState extends State<_PeriodTabs> with SingleTickerProviderState
 }
 
 class _TodoList extends StatelessWidget {
-  const _TodoList({required this.todos, required this.onTap});
+  const _TodoList({required this.todos, required this.timeZone, required this.onTap});
 
   final List<Todo> todos;
+  final TimeZone timeZone;
   final ValueChanged<String> onTap;
 
   @override
@@ -177,22 +202,23 @@ class _TodoList extends StatelessWidget {
     separatorBuilder: (_, _) => const Divider(height: 1),
     itemBuilder: (context, index) {
       final todo = todos[index];
-      return _TodoRow(key: ValueKey(todo.id), todo: todo, onTap: () => onTap(todo.id));
+      return _TodoRow(key: ValueKey(todo.id), todo: todo, timeZone: timeZone, onTap: () => onTap(todo.id));
     },
   );
 }
 
 class _TodoRow extends StatelessWidget {
-  const _TodoRow({super.key, required this.todo, required this.onTap});
+  const _TodoRow({super.key, required this.todo, required this.timeZone, required this.onTap});
 
   final Todo todo;
+  final TimeZone timeZone;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final theme = Theme.of(context);
-    final dueAt = todo.dueAt.toLocal();
+    final dueAt = timeZone.wallClock(todo.dueAt);
     return ListTile(
       onTap: onTap,
       leading: Text(

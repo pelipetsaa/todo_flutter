@@ -10,6 +10,7 @@ import 'package:todo_flutter/presentation/feature/todolist/todo_list_screen.dart
 import 'package:todo_flutter/presentation/ui/strings.dart';
 
 import '../support/fakes.dart';
+import '../support/time_zones.dart';
 
 Widget app(Widget home, {Locale locale = const Locale('en')}) => MaterialApp(
   locale: locale,
@@ -84,6 +85,22 @@ void main() {
 
       await tester.tap(find.text('Buy milk'));
       expect(intents.single, isA<TodoListTodoClicked>().having((i) => i.id, 'id', '1'));
+    });
+
+    testWidgets('due times are shown in the given time zone', (tester) async {
+      // 23:30 UTC on 31 Oct is 00:30 on 1 Nov in Berlin (CET, UTC+1).
+      await tester.pumpWidget(
+        app(
+          TodoListScreen(
+            state: TodoListState(hasLoaded: true, todos: [todo('1', dueAt: DateTime.utc(2026, 10, 31, 23, 30))]),
+            onIntent: (_) {},
+            onRefresh: () async {},
+            timeZone: berlin,
+          ),
+        ),
+      );
+      expect(find.text('00:30'), findsOneWidget);
+      expect(find.text('Sun, 1 Nov 2026'), findsOneWidget);
     });
 
     testWidgets('empty state names the period', (tester) async {

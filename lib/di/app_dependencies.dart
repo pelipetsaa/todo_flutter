@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
+import '../data/local/reinstall_guard.dart';
 import '../data/local/token_storage.dart';
 import '../data/remote/apis.dart';
 import '../data/remote/http_client_factory.dart';
@@ -25,15 +28,22 @@ class AppDependencies {
     required TodoRepository todoRepository,
     required this.googleSignIn,
     Clock clock = DateTime.now,
-    TimeZone timeZone = const DeviceTimeZone(),
+    this.timeZone = const DeviceTimeZone(),
   }) : _authRepository = authRepository,
        _todoRepository = todoRepository,
        _clock = clock,
-       _timeZone = timeZone,
        observeSession = ObserveSessionUseCase(sessionRepository);
 
   static Future<AppDependencies> create(AppConfig config) async {
-    final session = SessionManager(SecureTokenStorage());
+    final storage = SecureTokenStorage();
+    if (Platform.isIOS) {
+      try {
+        await ReinstallGuard.clearTokensOfPreviousInstall(storage, PreferencesInstallMarker());
+      } catch (e) {
+        debugPrint('Could not check for a reinstall: $e');
+      }
+    }
+    final session = SessionManager(storage);
     await session.restore();
     final dio = HttpClientFactory.create(ApiConfig(baseUrl: config.apiBaseUrl, enableLogging: kDebugMode), session);
     return AppDependencies(
@@ -49,7 +59,9 @@ class AppDependencies {
   final AuthRepository _authRepository;
   final TodoRepository _todoRepository;
   final Clock _clock;
-  final TimeZone _timeZone;
+
+  /// The zone in which dates and times are shown and entered.
+  final TimeZone timeZone;
   final GoogleSignInProvider googleSignIn;
   final ObserveSessionUseCase observeSession;
 
@@ -59,7 +71,7 @@ class AppDependencies {
   RegisterViewModel registerViewModel() => RegisterViewModel(RegisterUseCase(_authRepository));
 
   TodoListViewModel todoListViewModel() => TodoListViewModel(
-    GetTodosForPeriodUseCase(_todoRepository, PeriodRangeCalculator(_timeZone), _clock),
+    GetTodosForPeriodUseCase(_todoRepository, PeriodRangeCalculator(timeZone), _clock),
     LogoutUseCase(_authRepository),
   );
 
@@ -68,7 +80,7 @@ class AppDependencies {
     getTodo: GetTodoUseCase(_todoRepository),
     saveTodo: SaveTodoUseCase(_todoRepository),
     deleteTodo: DeleteTodoUseCase(_todoRepository),
-    defaultDueDate: DefaultDueDateUseCase(_clock, _timeZone),
-    timeZone: _timeZone,
+    defaultDueDate: DefaultDueDateUseCase(_clock, timeZone),
+    timeZone: timeZone,
   );
 }
