@@ -11,8 +11,25 @@ versions are the `v*` tags that trigger the release workflow.
 - `tool/run_on_device.sh` runs a debug build on a connected phone against the local server (`adb reverse` on Android,
   the computer's Wi-Fi address on iPhone); Android debug builds allow plain HTTP to any host for this.
 
+- Password managers can fill the sign-in and sign-up forms and offer to save the credentials.
+
+### Changed
+- The tokens are stored as one secure value, so a pair is never saved half-updated; the two values of 1.0.1 are moved
+  over on the first launch.
+- A reinstalled iOS app starts signed out instead of reusing the previous install's Keychain tokens. Updating from
+  1.0.1 on iOS signs the user out once.
+- GitHub Actions are pinned to commit SHAs.
+
 ### Fixed
 - The "To do" status badge had no background in the light theme; it is grey again, as in the ToDoList apps.
+- Log out is instant: it no longer waits up to a minute for a sleeping server to revoke the refresh token.
+- A token refresh that cannot reach the server reports "No connection" instead of "Session expired", and saving or
+  deleting a todo shows that error instead of silently stopping.
+- Saving a todo that was deleted elsewhere closes the editor with an error; deleting one closes it.
+- A failing Keychain / Keystore no longer breaks sign-in, sign-out or app start.
+- Debug logs no longer contain the access token.
+- Google sign-in no longer keeps spinning after an unexpected plugin error.
+- Requests under `/api/v1/auth` are recognised when `API_BASE_URL` contains a path.
 
 ## 1.0.1 — 2026-10-30
 

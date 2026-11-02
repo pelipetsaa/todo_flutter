@@ -83,6 +83,10 @@ class TodoDetailViewModel extends MviViewModel<TodoDetailState, TodoDetailIntent
     switch (await _saveTodo(state.todoId, draft)) {
       case Success():
         sendEffect(const TodoDetailClose());
+      // Deleted elsewhere: there is nothing left to edit, so the screen closes and the list reloads.
+      case Failure(error: final NotFoundError error):
+        sendEffect(TodoDetailShowError(error));
+        sendEffect(const TodoDetailClose());
       case Failure(:final error):
         _reduce(TodoDetailMutation.saveFailed(error));
         if (_isReportable(error)) sendEffect(TodoDetailShowError(error));
@@ -94,7 +98,8 @@ class TodoDetailViewModel extends MviViewModel<TodoDetailState, TodoDetailIntent
     if (id == null || state.isBusy) return;
     _reduce(const TodoDetailMutation.deleteStarted());
     switch (await _deleteTodo(id)) {
-      case Success():
+      // Already deleted elsewhere: the outcome the user asked for.
+      case Success() || Failure(error: NotFoundError()):
         sendEffect(const TodoDetailClose());
       case Failure(:final error):
         _reduce(const TodoDetailMutation.deleteFailed());

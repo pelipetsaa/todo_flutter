@@ -79,6 +79,7 @@ class RegisterScreen extends StatelessWidget {
             enabled: enabled,
             isPassword: false,
             textInputAction: TextInputAction.next,
+            autofillHints: const [AutofillHints.email],
           ),
           CredentialField(
             value: state.password,
@@ -88,6 +89,7 @@ class RegisterScreen extends StatelessWidget {
             enabled: enabled,
             isPassword: true,
             textInputAction: TextInputAction.next,
+            autofillHints: const [AutofillHints.newPassword],
           ),
           CredentialField(
             value: state.confirmPassword,
@@ -97,6 +99,7 @@ class RegisterScreen extends StatelessWidget {
             enabled: enabled,
             isPassword: true,
             textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.newPassword],
             onSubmitted: () => onIntent(const RegisterSubmitClicked()),
           ),
           if (error != null)

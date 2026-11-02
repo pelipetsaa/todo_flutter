@@ -17,6 +17,7 @@ class SyncedTextField extends StatefulWidget {
     this.onSubmitted,
     this.minLines,
     this.maxLines = 1,
+    this.autofillHints,
   });
 
   final String value;
@@ -30,6 +31,7 @@ class SyncedTextField extends StatefulWidget {
   final VoidCallback? onSubmitted;
   final int? minLines;
   final int? maxLines;
+  final Iterable<String>? autofillHints;
 
   @override
   State<SyncedTextField> createState() => _SyncedTextFieldState();
@@ -61,6 +63,7 @@ class _SyncedTextFieldState extends State<SyncedTextField> {
     onSubmitted: widget.onSubmitted == null ? null : (_) => widget.onSubmitted!(),
     minLines: widget.minLines,
     maxLines: widget.maxLines,
+    autofillHints: widget.autofillHints,
     decoration: InputDecoration(
       labelText: widget.label,
       errorText: widget.errorText,

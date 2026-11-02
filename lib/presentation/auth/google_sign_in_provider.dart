@@ -61,8 +61,8 @@ class PluginGoogleSignInProvider implements GoogleSignInProvider {
       return e.code == GoogleSignInExceptionCode.canceled
           ? const GoogleSignInCancelled()
           : GoogleSignInFailure('${e.code.name}: ${e.description}');
-    } on Exception catch (e) {
-      // Platform errors outside the plugin's own exceptions must not leave the button spinning.
+    } catch (e) {
+      // Anything else (platform exceptions, plugin errors) must not leave the button spinning either.
       return GoogleSignInFailure(e.toString());
     }
   }

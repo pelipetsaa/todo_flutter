@@ -18,7 +18,10 @@ class AuthLayout extends StatelessWidget {
           constraints: const BoxConstraints(maxWidth: 480),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: children),
+            // Lets password managers fill the form and offer to save the credentials once the screen is left.
+            child: AutofillGroup(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 16, children: children),
+            ),
           ),
         ),
       ),
@@ -56,6 +59,7 @@ class CredentialField extends StatelessWidget {
     required this.enabled,
     required this.isPassword,
     required this.textInputAction,
+    required this.autofillHints,
     this.onSubmitted,
   });
 
@@ -66,6 +70,9 @@ class CredentialField extends StatelessWidget {
   final bool enabled;
   final bool isPassword;
   final TextInputAction textInputAction;
+
+  /// [AutofillHints] values, e.g. [AutofillHints.newPassword] on the registration form.
+  final Iterable<String> autofillHints;
   final VoidCallback? onSubmitted;
 
   @override
@@ -80,6 +87,7 @@ class CredentialField extends StatelessWidget {
       obscureText: isPassword,
       keyboardType: isPassword ? TextInputType.visiblePassword : TextInputType.emailAddress,
       textInputAction: textInputAction,
+      autofillHints: autofillHints,
       onSubmitted: onSubmitted,
     );
   }

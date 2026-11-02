@@ -131,18 +131,28 @@ void main() {
   group('logout', () {
     setUp(() => build(tokens: loggedIn));
 
-    test('revokes the refresh token and clears the session', () async {
-      adapter.handler = (_) => jsonResponse(204);
-      await auth.logout();
-      expect(adapter.requests.single.data, {'refreshToken': 'refresh-1'});
+    test('clears the session at once and revokes the refresh token in the background', () async {
+      final serverAnswer = Completer<void>();
+      adapter.handler = (_) async {
+        await serverAnswer.future;
+        return jsonResponse(204);
+      };
+
+      expect(await auth.logout(), const Success<void>(null));
       expect(storage.tokens, isNull);
       expect(session.session, SessionState.loggedOut);
+
+      await pumpEventQueue();
+      expect(adapter.requests.single.data, {'refreshToken': 'refresh-1'});
+      expect(adapter.requests.single.headers['Authorization'], isNull);
+      serverAnswer.complete();
     });
 
     test('clears the session even when the server is unreachable', () async {
       adapter.handler = (options) => throw DioException.connectionError(requestOptions: options, reason: 'offline');
       expect(await auth.logout(), const Success<void>(null));
       expect(session.session, SessionState.loggedOut);
+      await pumpEventQueue();
     });
   });
 
@@ -257,12 +267,21 @@ void main() {
       expect(changes, [SessionState.loggedOut]);
     });
 
-    test('a refresh without network keeps the session', () async {
+    test('a refresh without network keeps the session and reports a network error', () async {
       adapter.handler = (options) => options.uri.path == '/api/v1/auth/refresh'
           ? throw DioException.connectionError(requestOptions: options, reason: 'offline')
           : jsonResponse(401);
 
-      expect(await todos.getTodos(range), const Failure(UnauthorizedError()));
+      expect(await todos.getTodos(range), const Failure(NetworkError()));
+      expect(session.session, SessionState.loggedIn);
+      expect(storage.tokens, loggedIn);
+    });
+
+    test('a malformed refresh response fails the request and keeps the session', () async {
+      adapter.handler = (options) =>
+          options.uri.path == '/api/v1/auth/refresh' ? jsonResponse(200, {'unexpected': true}) : jsonResponse(401);
+
+      expect(await todos.getTodos(range), isA<Failure>());
       expect(session.session, SessionState.loggedIn);
     });
 
@@ -288,4 +307,70 @@ void main() {
       expect(adapter.paths.where((p) => p.endsWith('/refresh')), hasLength(1));
     });
   });
+
+  group('base URL with a path', () {
+    test('auth requests are still recognised', () async {
+      storage = InMemoryTokenStorage(loggedIn);
+      session = SessionManager(storage);
+      await session.restore();
+      adapter = FakeAdapter((_) => jsonResponse(401, {'code': 'UNAUTHORIZED', 'message': 'Invalid credentials'}));
+      final dio = HttpClientFactory.create(const ApiConfig(baseUrl: 'http://test/backend'), session, adapter: adapter);
+
+      expect(await AuthRepositoryImpl(AuthApi(dio), session).login('user@mail.com', 'wrong'), isA<Failure>());
+
+      // A wrong password is not an expired session: no token is sent and no refresh is attempted.
+      expect(adapter.paths, ['POST /backend/api/v1/auth/login']);
+      expect(adapter.requests.single.headers['Authorization'], isNull);
+      expect(session.session, SessionState.loggedIn);
+    });
+  });
+
+  group('token storage failures', () {
+    test('sign-in works for this launch when the storage cannot be written', () async {
+      session = SessionManager(FailingTokenStorage());
+      await session.restore();
+      expect(session.session, SessionState.loggedOut);
+      final changes = <SessionState>[];
+      session.sessionChanges.listen(changes.add);
+
+      await session.start(loggedIn);
+      expect(session.session, SessionState.loggedIn);
+      await session.end();
+      expect(session.session, SessionState.loggedOut);
+      await settle();
+      expect(changes, [SessionState.loggedIn, SessionState.loggedOut]);
+    });
+
+    test('the session is saved before listeners hear about it', () async {
+      final slow = SlowTokenStorage();
+      session = SessionManager(slow);
+      StoredTokens? storedWhenNotified;
+      session.sessionChanges.listen((_) => storedWhenNotified = slow.tokens);
+
+      await session.start(loggedIn);
+      await settle();
+      expect(storedWhenNotified, loggedIn);
+    });
+  });
+}
+
+/// Takes a moment to write, like the real Keychain.
+class SlowTokenStorage extends InMemoryTokenStorage {
+  @override
+  Future<void> save(StoredTokens tokens) async {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await super.save(tokens);
+  }
+}
+
+/// Fails like a broken Keychain / Keystore.
+class FailingTokenStorage implements TokenStorage {
+  @override
+  Future<StoredTokens?> read() async => throw Exception('keychain unavailable');
+
+  @override
+  Future<void> save(StoredTokens tokens) async => throw Exception('keychain unavailable');
+
+  @override
+  Future<void> clear() async => throw Exception('keychain unavailable');
 }

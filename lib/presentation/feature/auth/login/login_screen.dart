@@ -89,6 +89,7 @@ class LoginScreen extends StatelessWidget {
             enabled: !state.isBusy,
             isPassword: false,
             textInputAction: TextInputAction.next,
+            autofillHints: const [AutofillHints.email],
           ),
           CredentialField(
             value: state.password,
@@ -98,6 +99,7 @@ class LoginScreen extends StatelessWidget {
             enabled: !state.isBusy,
             isPassword: true,
             textInputAction: TextInputAction.done,
+            autofillHints: const [AutofillHints.password],
             onSubmitted: () => onIntent(const LoginSubmitClicked()),
           ),
           if (error != null) FormError(_message(strings, error)),
